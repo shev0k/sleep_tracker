@@ -1,0 +1,8 @@
+[
+    { "icon": "spa", "name": "New Plant" },
+    { "icon": "grass", "name": "Watering Can" },
+    { "icon": "eco", "name": "Fertilizer" },
+    { "icon": "local_florist", "name": "Garden Shovel" },
+    { "icon": "water", "name": "Irrigation System" }
+  ]
+  
