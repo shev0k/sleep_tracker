@@ -1,0 +1,28 @@
+name: sleeping_tracker_ui
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.5.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  fl_chart: ^0.69.0
+  flutter_awesome_alert_box: ^2.1.1
+  flutter_slidable: ^3.1.1
+  lottie: ^3.1.2
+  flutter_box_transform: ^0.4.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+   - assets/animations/
+   - assets/images/
+   - assets/data/
