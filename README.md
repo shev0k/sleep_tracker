@@ -6,7 +6,7 @@
 
 **NightBloom** is a gamified sleep tracking app designed to help users improve their sleep habits through interactive and engaging experiences. Unlike traditional sleep apps that focus on data collection, NightBloom incorporates game mechanics, visual rewards, and daily challenges to keep users motivated while helping them achieve their sleep goals.
 
-![NightBloom App Preview](https://raw.githubusercontent.com/shev0k/sleep_tracker/refs/heads/main/images/NightBloom.png)
+![NightBloom App Preview](https://raw.githubusercontent.com/shev0k/sleep_tracker/refs/heads/main/images/NightBloom_v1.png)
 
 ## Key Features
 
