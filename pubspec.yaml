@@ -14,11 +14,15 @@ dependencies:
   flutter_slidable: ^3.1.1
   lottie: ^3.1.2
   flutter_box_transform: ^0.4.6
+  
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  mockito: ^5.4.4
+  provider: ^6.1.2
+  build_runner: ^2.4.12
 
 flutter:
   uses-material-design: true
