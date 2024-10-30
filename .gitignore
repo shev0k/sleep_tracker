@@ -30,6 +30,8 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+node_modules/
+jspm_packages/
 
 # Symbolication related
 app.*.symbols
