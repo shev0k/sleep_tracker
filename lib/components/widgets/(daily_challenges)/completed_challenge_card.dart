@@ -2,16 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
+import 'package:sleeping_tracker_ui/models/reward.dart';
 
 class CompletedChallengeCard extends StatelessWidget {
   final Challenge challenge;
   final VoidCallback onChevronTap;
 
   const CompletedChallengeCard({
-    Key? key,
+    super.key,
     required this.challenge,
     required this.onChevronTap,
-  }) : super(key: key);
+  });
 
   /// Maps the icon string from the backend to IconData.
   IconData _mapIcon(String? iconName) {

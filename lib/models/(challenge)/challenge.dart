@@ -1,6 +1,8 @@
 // lib/models/challenge.dart
 
 import 'dart:async';
+import 'package:sleeping_tracker_ui/models/reward.dart';
+import 'package:sleeping_tracker_ui/models/achievement.dart';
 
 class Challenge {
   final String id;
@@ -90,44 +92,44 @@ class Challenge {
   }
 }
 
-class Reward {
-  final String type;
-  final dynamic value;
+// class Reward {
+//   final String type;
+//   final dynamic value;
 
-  Reward({required this.type, required this.value});
+//   Reward({required this.type, required this.value});
 
-  factory Reward.fromJson(Map<String, dynamic> json) {
-    return Reward(
-      type: json['type'],
-      value: json['value'],
-    );
-  }
+//   factory Reward.fromJson(Map<String, dynamic> json) {
+//     return Reward(
+//       type: json['type'],
+//       value: json['value'],
+//     );
+//   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'value': value,
-    };
-  }
-}
+//   Map<String, dynamic> toJson() {
+//     return {
+//       'type': type,
+//       'value': value,
+//     };
+//   }
+// }
 
-class Achievement {
-  final String title;
-  final String description;
+// class Achievement {
+//   final String title;
+//   final String description;
 
-  Achievement({required this.title, required this.description});
+//   Achievement({required this.title, required this.description});
 
-  factory Achievement.fromJson(Map<String, dynamic> json) {
-    return Achievement(
-      title: json['title'],
-      description: json['description'],
-    );
-  }
+//   factory Achievement.fromJson(Map<String, dynamic> json) {
+//     return Achievement(
+//       title: json['title'],
+//       description: json['description'],
+//     );
+//   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'description': description,
-    };
-  }
-}
+//   Map<String, dynamic> toJson() {
+//     return {
+//       'title': title,
+//       'description': description,
+//     };
+//   }
+// }

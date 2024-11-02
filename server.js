@@ -4,6 +4,7 @@ const connectToMongoDB = require('./db');
 //Declare the routes to be used
 const sleepRoutes = require('./routes/sleepRoutes.js');
 const challengeRoutes = require('./routes/challengeRoutes.js');
+const progressRoutes = require('./routes/progressRoutes.js');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(express.json());
 // Register the use of the routes here
 app.use('/api', sleepRoutes);
 app.use('/api', challengeRoutes);
+app.use('/api', progressRoutes);
 
 app.get('/', (req, res) => {
     res.send('Sleep Tracker Backend Running');

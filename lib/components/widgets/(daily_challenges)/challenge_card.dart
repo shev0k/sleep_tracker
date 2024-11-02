@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
+import 'package:sleeping_tracker_ui/models/reward.dart';
 
 class ChallengeList extends StatelessWidget {
   final List<Challenge> challenges;
@@ -9,11 +10,11 @@ class ChallengeList extends StatelessWidget {
   final Function(Challenge) onAccept;
 
   const ChallengeList({
-    Key? key,
+    super.key,
     required this.challenges,
     required this.cardWidth,
     required this.onAccept,
-  }) : super(key: key);
+  });
 
   /// Maps the icon string from the backend to IconData.
   IconData _mapIcon(String? iconName) {

@@ -1,8 +1,12 @@
+// lib/screens/progress_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:sleeping_tracker_ui/components/widgets/(progress)/rounded_card_progress.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(progress)/achievement_icon.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(progress)/item_card.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(progress)/progress_segment.dart';
+import 'package:sleeping_tracker_ui/services/progress_service.dart';
+import 'package:sleeping_tracker_ui/models/progress.dart';
+import 'package:sleeping_tracker_ui/components/widgets/(progress)/rounded_card_progress.dart';
 import 'achievements_screen.dart';
 import 'garden_stages_screen.dart';
 
@@ -10,46 +14,51 @@ class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _ProgressScreenState createState() => _ProgressScreenState();
+  ProgressScreenState createState() => ProgressScreenState();
 }
 
-class _ProgressScreenState extends State<ProgressScreen> {
-  final List<String> gardenStages = [
-    "Wasteland",
-    "Dry Ground",
-    "Sprouting Garden",
-    "Lush Garden",
-    "Blossoming Garden",
+class ProgressScreenState extends State<ProgressScreen> {
+  final ProgressService _progressService = ProgressService();
+  late Future<Progress> _progressFuture;
+
+  final List<Map<String, dynamic>> allAchievements = [
+    {"icon": 'bedtime', "name": "Sleep 7 hours"},
+    {"icon": 'alarm', "name": "Wake up early"},
+    {"icon": 'nature', "name": "Sleep 8 hours"},
+    {"icon": 'nights_stay', "name": "No screens before bed"},
+    {"icon": 'alarm_off', "name": "Wake up at 5 AM"},
+    {"icon": 'wb_sunny', "name": "Sleep before 10 PM for 7 days"},
+    // Add more achievements as needed
   ];
 
-  final List<Map<String, dynamic>> obtainedItems = [
-    {"icon": Icons.spa, "name": "New Plant"},
-    {"icon": Icons.grass, "name": "Watering Can"},
-    {"icon": Icons.eco, "name": "Fertilizer"},
-    {"icon": Icons.local_florist, "name": "Garden Shovel"},
-    {"icon": Icons.water, "name": "Irrigation System"},
-  ];
-
-  final List<Map<String, dynamic>> lockedItems = [
-    {"icon": Icons.lock, "name": "Mystery Item 1"},
-    {"icon": Icons.lock, "name": "Mystery Item 2"},
+  final List<Map<String, dynamic>> allItems = [
+    {"icon": 'spa', "name": "New Plant"},
+    {"icon": 'grass', "name": "Watering Can"},
+    {"icon": 'eco', "name": "Fertilizer"},
+    {"icon": 'local_florist', "name": "Garden Shovel"},
+    {"icon": 'water', "name": "Irrigation System"},
+    {"icon": 'lock', "name": "Mystery Item 1"},
+    {"icon": 'lock', "name": "Mystery Item 2"},
+    // Add more items as needed
   ];
 
   final ScrollController _scrollController = ScrollController();
+
   bool isAtStart = true;
   bool isAtEnd = false;
 
   @override
   void initState() {
     super.initState();
+    _progressFuture = _progressService.getProgress();
     _scrollController.addListener(_scrollListener);
   }
 
   void _scrollListener() {
     setState(() {
       isAtStart = _scrollController.position.pixels == 0;
-      isAtEnd = _scrollController.position.pixels == _scrollController.position.maxScrollExtent;
+      isAtEnd =
+          _scrollController.position.pixels == _scrollController.position.maxScrollExtent;
     });
   }
 
@@ -59,26 +68,29 @@ class _ProgressScreenState extends State<ProgressScreen> {
     super.dispose();
   }
 
-  Widget _buildAchievementsSection(BuildContext context) {
+  Widget _buildAchievementsSection(BuildContext context, Progress progress) {
     return RoundedCard(
       padding: const EdgeInsets.all(25),
       child: Column(
         children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              AchievementIcon(icon: Icons.bedtime, description: "Sleep 7 hours"),
-              AchievementIcon(icon: Icons.alarm, description: "Wake up before 7 AM"),
-              AchievementIcon(icon: Icons.nights_stay, description: "No screens..."),
-              AchievementIcon(icon: Icons.nature, description: "Sleep 8 hours"),
-            ],
+          // Display unlocked achievements
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: progress.achievements
+                .map((achievement) => AchievementIcon(
+                      icon: _getIconData(achievement.icon),
+                      description: achievement.title,
+                    ))
+                .toList(),
           ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => AchievementsScreen()),
+                MaterialPageRoute(
+                    builder: (context) => AchievementsScreen(progress: progress)),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -146,7 +158,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  Widget _buildObtainedItemsSection() {
+  Widget _buildObtainedItemsSection(Progress progress) {
+    // Compute locked items
+    List<Map<String, dynamic>> lockedItems = allItems.where((item) {
+      return !progress.items.any((i) => i.name == item['name']);
+    }).toList();
+
     return RoundedCard(
       padding: const EdgeInsets.all(15),
       child: Row(
@@ -163,22 +180,22 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 children: [
-                  ...obtainedItems
+                  // Display obtained items
+                  ...progress.items
                       .map((item) => ItemCard(
-                            icon: item["icon"],
-                            name: item["name"],
+                            icon: _getIconData(item.icon),
+                            name: item.name,
                             obtained: true,
                             width: 120,
-                          ))
-                      ,
+                          )),
+                  // Display locked items
                   ...lockedItems
                       .map((item) => ItemCard(
-                            icon: item["icon"],
-                            name: item["name"],
+                            icon: Icons.lock, // Use a lock icon for locked items
+                            name: item['name'],
                             obtained: false,
                             width: 120,
-                          ))
-                      ,
+                          )),
                 ],
               ),
             ),
@@ -229,6 +246,32 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
   }
 
+  IconData _getIconData(String? iconName) {
+    // Map string icon names to IconData
+    // This requires that your backend sends icon names that match Flutter's Icons
+    switch (iconName) {
+      case 'bedtime':
+        return Icons.bedtime;
+      case 'alarm':
+        return Icons.alarm;
+      case 'nights_stay':
+        return Icons.nights_stay;
+      case 'nature':
+        return Icons.nature;
+      case 'spa':
+        return Icons.spa;
+      case 'directions_walk':
+        return Icons.directions_walk;
+      case 'alarm_off':
+        return Icons.alarm_off;
+      case 'wb_sunny':
+        return Icons.wb_sunny;
+      // Add more mappings as needed
+      default:
+        return Icons.help_outline;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -243,49 +286,68 @@ class _ProgressScreenState extends State<ProgressScreen> {
           color: Colors.white,
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Achievements",
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+      body: FutureBuilder<Progress>(
+        future: _progressFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // Loading state
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            // Error state
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData) {
+            // No data state
+            return const Center(child: Text('No progress data found.'));
+          } else {
+            // Data loaded
+            Progress progress = snapshot.data!;
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(25.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Achievements Section
+                    Text(
+                      "Achievements",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildAchievementsSection(context, progress),
+                    const SizedBox(height: 40),
+                    // Garden Stages Section
+                    Text(
+                      "Garden Stages",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildGardenGrowthSection(context),
+                    const SizedBox(height: 40),
+                    // Obtained Items Section
+                    Text(
+                      "Obtained Items",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildObtainedItemsSection(progress),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              _buildAchievementsSection(context),
-              const SizedBox(height: 40),
-              // Garden Stages Section
-              Text(
-                "Garden Stages",
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildGardenGrowthSection(context),
-              const SizedBox(height: 40),
-              // Obtained Items Section
-              Text(
-                "Obtained Items",
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildObtainedItemsSection(),
-            ],
-          ),
-        ),
+            );
+          }
+        },
       ),
     );
   }
