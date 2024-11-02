@@ -28,11 +28,11 @@ const items = [
         icon: "water_drop",
     },
     {
-        name: "Mystery Item 1",
+        name: "Mastermind",
         icon: "lock",
     },
     {
-        name: "Mystery Item 2",
+        name: "Book",
         icon: "lock",
     },
 ];

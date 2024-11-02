@@ -18,8 +18,8 @@ const seedChallenges = async () => {
         const crawlWalkerAchievement = await Achievement.findOne({ title: "Crawl Walker" });
 
         const meditationBadgeItem = await Item.findOne({ name: "Meditation Badge" });
-        const mysteryItem1 = await Item.findOne({ name: "Mystery Item 1" });
-        const mysteryItem2 = await Item.findOne({ name: "Mystery Item 2" });
+        const mastermind = await Item.findOne({ name: "Mastermind" });
+        const book = await Item.findOne({ name: "Book" });
 
         const challenges = [
             {
@@ -36,8 +36,8 @@ const seedChallenges = async () => {
             {
                 title: "Meditate for 10 minutes",
                 description: "Spend at least 10 minutes meditating to relax your mind.",
-                reward: mysteryItem1
-                    ? { type: "item", item: mysteryItem1._id }
+                reward: mastermind
+                    ? { type: "item", item: mastermind._id }
                     : null,
                 icon: "self_improvement",
                 type: "action",
@@ -47,8 +47,8 @@ const seedChallenges = async () => {
             {
                 title: "Read a book for 30 minutes",
                 description: "Read any book for at least 30 minutes.",
-                reward: mysteryItem2
-                    ? { type: "item", item: mysteryItem2._id }
+                reward: book
+                    ? { type: "item", item: book._id }
                     : null,
                 icon: "book",
                 type: "time",

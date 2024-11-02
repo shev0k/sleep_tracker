@@ -27,6 +27,17 @@ class Reward {
     }
   }
 
+  @override
+  String toString() {
+    if (type == 'points') {
+      return "$value points";
+    } else if (type == 'item' && value is Item) {
+      return "${value.name}";
+    } else {
+      return "Unknown Reward";
+    }
+  }
+
   Map<String, dynamic> toJson() {
     if (type == 'points') {
       return {

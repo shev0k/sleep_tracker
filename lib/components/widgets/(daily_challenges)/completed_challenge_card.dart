@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
 import 'package:sleeping_tracker_ui/models/reward.dart';
+import 'package:sleeping_tracker_ui/models/item.dart';
 
 class CompletedChallengeCard extends StatelessWidget {
   final Challenge challenge;
@@ -31,7 +32,13 @@ class CompletedChallengeCard extends StatelessWidget {
   }
 
   String _getRewardText(Reward reward) {
-    return reward.type == 'points' ? "${reward.value} points" : "${reward.value}";
+    if (reward.type == 'points') {
+      return "${reward.value} points";
+    } else if (reward.type == 'item' && reward.value is Item) {
+      return "${reward.value.name}";
+    } else {
+      return "Unknown Reward";
+    }
   }
 
   @override
