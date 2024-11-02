@@ -1,5 +1,5 @@
-// lib/screens/profile_settings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(settings)/rounded_card_settings.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(settings)/avatar_section.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(settings)/gender_option.dart';
@@ -8,16 +8,32 @@ class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ProfileSettingsScreenState createState() => _ProfileSettingsScreenState();
 }
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
-  String _username = "JohnDoe";
-  String _password = "******";
+  String _username = "User";
+  String _password = "";
+  String _displayedPassword = "******";
+  String _selectedGender = "Not specified";
   bool _hasChanges = false;
-  String _selectedGender = "Male";
   final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileSettings();
+  }
+
+  Future<void> _loadProfileSettings() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _username = prefs.getString('user_name') ?? "User";
+      _password = prefs.getString('user_password') ?? ""; // Store actual password
+      _displayedPassword = "******"; // Always display asterisks
+      _selectedGender = prefs.getString('user_gender') ?? "Not specified";
+    });
+  }
 
   @override
   void dispose() {
@@ -35,6 +51,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _updatePassword(String value) {
     setState(() {
       _password = value;
+      _displayedPassword = "******"; // Keep displayed password as asterisks
       _hasChanges = true;
     });
   }
@@ -46,8 +63,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     });
   }
 
-  void _saveChanges() {
-    // implement save functionality here
+  void _saveChanges() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', _username);
+    await prefs.setString('user_password', _password); // Save actual password
+    await prefs.setString('user_gender', _selectedGender);
+
     setState(() {
       _hasChanges = false;
     });
@@ -90,7 +111,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           style: const TextStyle(color: Colors.white),
           obscureText: true,
           decoration: InputDecoration(
-            hintText: _password,
+            hintText: _displayedPassword, // Display asterisks
             hintStyle: const TextStyle(color: Colors.white),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),

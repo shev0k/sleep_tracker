@@ -1,39 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/introduction/introduction_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.black,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
-  
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,  // screen orientation to portrait mode
-  ]).then((_) {
-    runApp(SleepApp());
-  });
+
+  // App runs only in portrait mode.
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Retrieve shared preferences instance and check introduction screen status.
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  bool hasSeenIntroduction = prefs.getBool('hasSeenIntroduction') ?? false;
+
+  runApp(SleepApp(hasSeenIntroduction: hasSeenIntroduction));
 }
 
 class SleepApp extends StatelessWidget {
-  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
+  final bool hasSeenIntroduction;
 
-  SleepApp({super.key});
+  const SleepApp({super.key, required this.hasSeenIntroduction});
 
   @override
   Widget build(BuildContext context) {
+    // Setting up system UI overlay styles.
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.black,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ));
+
     return MaterialApp(
       title: 'Sleep Tracker App',
-      debugShowCheckedModeBanner: false, // disable debug banner
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      scaffoldMessengerKey: scaffoldMessengerKey,
-      home: const HomeScreen(),
+      home: hasSeenIntroduction
+          ? const HomeScreen()
+          : const IntroductionAnimationScreen(),
     );
   }
 }
