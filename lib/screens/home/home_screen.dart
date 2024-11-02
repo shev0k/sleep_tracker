@@ -7,6 +7,7 @@ import 'package:sleeping_tracker_ui/components/widgets/(home)/transform_box.dart
 import 'package:sleeping_tracker_ui/components/widgets/(home)/rounded_card.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(home)/image_rounded_card.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(home)/bottom_button.dart';
+import 'package:sleeping_tracker_ui/services/sleep_score_service.dart';
 import 'package:sleeping_tracker_ui/utils/(home)/position_helper.dart';
 import 'package:sleeping_tracker_ui/services/data_provider.dart';
 import 'package:sleeping_tracker_ui/screens/daily_challenges/daily_challenges_screen.dart';
@@ -24,6 +25,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final SleepScoreService _scoreService = SleepScoreService();
+  int? _totalScore;
+  
   // track added items by name
   List<String> addedItems = [];
 
@@ -46,6 +50,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadObtainedItems();
+    _fetchTotalScore();
+  }
+
+  void _fetchTotalScore() {
+    _scoreService.getTotalScore().then((score) {
+      setState(() {
+        _totalScore = score;
+      });
+    }).catchError((error) {
+      print('Error fetching total score: $error');
+      // Optionally display an error message in the UI
+    });
   }
 
   @override
@@ -165,10 +181,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: _buildRoundedCard(
-                      child: const Column(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
+                          const Text(
                             "Sleep Score",
                             style: TextStyle(
                               color: Colors.white70,
@@ -176,10 +192,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
-                            "85",
-                            style: TextStyle(
+                            "$_totalScore",
+                            style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,

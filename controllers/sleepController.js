@@ -53,8 +53,25 @@ const getAllSleepData = async (req, res) => {
     }
 };
 
+// GET /sleep/totalScore - Get total sleep quality score
+const getTotalScore = async (req, res) => {
+    try {
+        // Retrieve all sleep data records
+        const allSleepData = await SleepData.find();
+
+        // Calculate total score by summing sleepQualityScore from each record
+        const totalScore = allSleepData.reduce((sum, record) => sum + record.sleepQualityScore, 0);
+
+        // Return the total score as JSON
+        res.status(200).json({ totalScore });
+    } catch (error) {
+        res.status(500).json({ message: 'Error calculating total score', error });
+    }
+};
+
 module.exports = {
-    getAllSleepData,
+    createSleepData,
     getSleepDataByUserId,
-    createSleepData
+    getAllSleepData,
+    getTotalScore
 };

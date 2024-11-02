@@ -2,363 +2,396 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(daily_challenges)/rounded_card_challenge.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(daily_challenges)/empty_challenge_card.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(daily_challenges)/challenge_card.dart';
 import 'package:sleeping_tracker_ui/components/widgets/(daily_challenges)/ongoing_challenge_card.dart';
 import 'completed_challenges_screen.dart';
+import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
+import 'package:sleeping_tracker_ui/services/challenge_service.dart'; // Import ChallengeService
 
 class DailyChallengesScreen extends StatefulWidget {
   const DailyChallengesScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _DailyChallengesScreenState createState() => _DailyChallengesScreenState();
+  DailyChallengesScreenState createState() => DailyChallengesScreenState();
 }
 
-class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
+class DailyChallengesScreenState extends State<DailyChallengesScreen> {
   final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
-  List<Map<String, dynamic>> dailyChallenges = [
-    {
-      "title": "No screen time 1 hour before bed",
-      "reward": {"type": "points", "value": 10},
-      "icon": Icons.screen_lock_portrait,
-      "type": "time",
-      "duration": 1 * 60 * 60,
-      "achievement": {
-        "title": "Night Owl",
-        "description": "Avoided screen time before bed",
-      },
-    },
-    {
-      "title": "Meditate for 10 minutes",
-      "reward": {"type": "item", "value": "Meditation Badge"},
-      "icon": Icons.self_improvement,
-      "type": "action",
-      "timeLimit": 10 * 60,
-      "isStarted": false,
-    },
-    // add more shitty challenges
-    {
-      "title": "Read a book for 30 minutes",
-      "reward": {"type": "points", "value": 15},
-      "icon": Icons.book,
-      "type": "time",
-      "duration": 30 * 60, 
-      "achievement": {
-        "title": "Bookworm",
-        "description": "Read for 30 minutes",
-      },
-    },
-    {
-      "title": "Walk 5000 steps",
-      "reward": {"type": "points", "value": 20},
-      "icon": Icons.directions_walk,
-      "type": "count",
-      "target": 5000,
-      "current": 0,
-      "achievement": {
-        "title": "Crawl Walker",
-        "description": "Walked 5000 steps",
-      },
-    },
-  ];
+  // State Variables
+  List<Challenge> dailyChallenges = [];
+  List<Challenge> ongoingChallenges = [];
+  bool isLoading = true;
+  String? errorMessage;
 
-  List<Map<String, dynamic>> ongoingChallenges = [
-    {
-      "title": "Sleep for 8 hours",
-      "progress": null, 
-      "icon": Icons.nights_stay,
-      "type": "time",
-      "reward": {"type": "points", "value": 20},
-      "duration": 8 * 60 * 60, 
-      "isStarted": true,
-      "startTime": DateTime.now().subtract(const Duration(hours: 4)), 
-      "timer": null,
-    },
-    {
-      "title": "Drink 8 glasses of water",
-      "progress": null,
-      "icon": Icons.local_drink,
-      "type": "count",
-      "target": 8,
-      "current": 3, 
-      "reward": {"type": "item", "value": "Water Bottle"},
-      "isStarted": true,
-      "achievement": {
-        "title": "Hydration Hero",
-        "description": "Drank 8 glasses of water",
-      },
-    },
-    {
-      "title": "Exercise for 30 minutes",
-      "progress": null,
-      "icon": Icons.fitness_center,
-      "type": "time",
-      "reward": {"type": "item", "value": "Fitness Badge"},
-      "duration": 30 * 60, 
-      "isStarted": false,
-    },
-  ];
+  final ChallengeService _challengeService = ChallengeService();
 
   @override
   void initState() {
     super.initState();
-
-    // initial progress for ongoing challenges
-    for (var challenge in ongoingChallenges) {
-      if (challenge["isStarted"] == true) {
-        if (challenge["type"] == "time" || challenge["type"] == "action") {
-          DateTime startTime = challenge["startTime"];
-          int duration = challenge["duration"] ?? challenge["timeLimit"];
-          int elapsed = DateTime.now().difference(startTime).inSeconds;
-
-          // elapsed time is not negative
-          if (elapsed < 0) {
-            elapsed = 0;
-            challenge["startTime"] = DateTime.now();
-          }
-
-          // elapsed time does not exceed duration
-          if (elapsed >= duration) {
-            elapsed = duration;
-            challenge["progress"] = 1.0;
-            completeChallengeByChallenge(challenge);
-          } else {
-            challenge["progress"] = elapsed / duration;
-          }
-        }
-      }
-    }
-
-    // start timers for already started challenges
-    for (var challenge in ongoingChallenges) {
-      if (challenge["isStarted"] == true &&
-          (challenge["type"] == "time" || challenge["type"] == "action")) {
-        startChallengeTimer(challenge);
-      }
-    }
+    fetchChallenges();
   }
 
   @override
   void dispose() {
     for (var challenge in ongoingChallenges) {
-      if (challenge["timer"] != null) {
-        challenge["timer"].cancel();
-        challenge["timer"] = null;
+      if (challenge.timer != null) {
+        challenge.timer!.cancel();
+        challenge.timer = null;
       }
     }
     super.dispose();
   }
 
-  // management functions
-  void acceptChallenge(int index) {
-    final challenge = dailyChallenges[index];
-    setState(() {
-      dailyChallenges.removeAt(index);
-      challenge["progress"] = null;
-      challenge["isStarted"] = false;
-      challenge["startTime"] = null; 
-      ongoingChallenges.insert(0, challenge);
-    });
+  /// Fetches challenges from the backend and initializes the lists.
+  Future<void> fetchChallenges() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
 
-    // show alert for accepted challenge
-    _showAlert(
-      "Challenge Accepted!",
-      Icons.check_circle,
-      () {
-        // undo action
-        if (mounted) {
-          setState(() {
-            if (ongoingChallenges.contains(challenge)) {
-              ongoingChallenges.remove(challenge);
-              dailyChallenges.insert(index, challenge);
-            }
-          });
+      // Fetch all challenges
+      List<Challenge> allChallenges = await _challengeService.getAllChallenges();
+
+      // Fetch active (ongoing) challenges
+      List<Challenge> activeChallenges = await _challengeService.getActiveChallenges();
+
+      setState(() {
+        // Daily challenges are those not accepted and not completed
+        dailyChallenges =
+            allChallenges.where((c) => !c.isAccepted && !c.isCompleted).toList();
+
+        // Ongoing challenges are those accepted and not completed
+        ongoingChallenges =
+            activeChallenges.where((c) => c.isAccepted && !c.isCompleted).toList();
+
+        isLoading = false;
+      });
+
+      // Start timers for active challenges if needed
+      for (var challenge in ongoingChallenges) {
+        if (challenge.type == "time" || challenge.type == "action") {
+          startChallengeTimer(challenge);
         }
-      },
-    );
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+      _showAlert("Failed to load challenges: $e", Icons.error, () {});
+    }
   }
 
-  void cancelChallenge(int index) {
-    final challenge = ongoingChallenges[index];
-    if (challenge["timer"] != null) {
-      challenge["timer"].cancel();
-      challenge["timer"] = null; // leave to NULL or else go boom boom
-    }
+  // Management functions
 
-    // index where the challenge will be put in dailyChallenges
-    int dailyInsertIndex = 0;
+  /// Accepts a daily challenge and moves it to ongoing challenges.
+  Future<void> acceptChallenge(Challenge challenge) async {
+    try {
+      Challenge updatedChallenge = await _challengeService.acceptChallenge(challenge.id);
 
-    setState(() {
-      ongoingChallenges.removeAt(index);
-      dailyChallenges.insert(dailyInsertIndex, challenge); // insert back to daily challenges
-    });
+      setState(() {
+        dailyChallenges.removeWhere((c) => c.id == challenge.id);
+        ongoingChallenges.insert(0, updatedChallenge);
+      });
 
-    // alert for canceled challenge
-    _showAlert(
-      "Challenge Canceled",
-      Icons.cancel,
-      () {
-        // Undo action
-        if (mounted) {
-          setState(() {
-            if (!ongoingChallenges.contains(challenge)) {
-              // remove the challenge from dailyChallenges
-              dailyChallenges.remove(challenge);
-              // put the challenge back into ongoingChallenges at prev index
-              ongoingChallenges.insert(index, challenge);
+      // Start timer if it's a time-based challenge
+      if (updatedChallenge.type == "time" || updatedChallenge.type == "action") {
+        startChallengeTimer(updatedChallenge);
+      }
 
-              // if challenge was started and not paused, restart timer
-              if (challenge["isStarted"] == true &&
-                  !(challenge["isPaused"] ?? false) &&
-                  (challenge["type"] == "time" || challenge["type"] == "action")) {
-                startChallengeTimer(challenge);
-              }
-            }
-          });
-        }
-      },
-    );
-  }
-
-  void completeChallengeByChallenge(Map<String, dynamic> challenge) {
-    if (challenge["timer"] != null) {
-      challenge["timer"].cancel();
-      challenge["timer"] = null; // another leave NULL or boom boom
-    }
-    setState(() {
-      ongoingChallenges.remove(challenge);
+      // Show alert for accepted challenge with Undo option
       _showAlert(
-        "Challenge Completed!",
+        "Challenge Accepted!",
         Icons.check_circle,
-        () {
-          if (mounted) {
+        () async {
+          try {
+            // Undo: Revert acceptance
+            Challenge revertedChallenge = await _challengeService.updateChallenge(
+              updatedChallenge.id,
+              {
+                'isAccepted': false,
+                'startTime': null,
+              },
+            );
+
             setState(() {
-              if (!ongoingChallenges.contains(challenge)) {
-                ongoingChallenges.insert(0, challenge);
-                if (challenge["isStarted"] == true &&
-                    !(challenge["isPaused"] ?? false) &&
-                    (challenge["type"] == "time" || challenge["type"] == "action")) {
-                  startChallengeTimer(challenge);
-                }
-              }
+              ongoingChallenges.removeWhere((c) => c.id == revertedChallenge.id);
+              dailyChallenges.insert(0, revertedChallenge);
             });
+
+            // Cancel timer if necessary
+            if (revertedChallenge.timer != null) {
+              revertedChallenge.timer!.cancel();
+              revertedChallenge.timer = null;
+            }
+          } catch (e) {
+            _showAlert("Undo failed: $e", Icons.error, () {});
           }
         },
       );
-    });
-
-    // check challenge has achievement
-    if (challenge.containsKey("achievement")) {
-      // show achievement alert
-      _showAchievementAlert(challenge["achievement"], challenge["icon"]);
-    }
-
-    // check challenge reward is item
-    if (challenge["reward"]["type"] == "item") {
-      // show item reward alert
-      _showItemRewardAlert(challenge["reward"], challenge["icon"]);
+    } catch (e) {
+      _showAlert("Failed to accept challenge: $e", Icons.error, () {});
     }
   }
 
-  // timer management functions
-  void startChallenge(Map<String, dynamic> challenge) {
+  /// Cancels an ongoing challenge and moves it back to daily challenges.
+  Future<void> cancelChallenge(int index) async {
+    final Challenge challenge = ongoingChallenges[index];
+    try {
+      // Cancel challenge in backend
+      Challenge updatedChallenge = await _challengeService.updateChallenge(
+        challenge.id,
+        {
+          'isAccepted': false,
+          'isCompleted': false,
+          'startTime': null,
+          'progress': 0.0,
+          'isPaused': false,
+          'current': challenge.type == 'count' ? 0 : null,
+        },
+      );
+
+      setState(() {
+        ongoingChallenges.removeAt(index);
+        dailyChallenges.insert(0, updatedChallenge);
+      });
+
+      // Cancel timer if necessary
+      if (updatedChallenge.timer != null) {
+        updatedChallenge.timer!.cancel();
+        updatedChallenge.timer = null;
+      }
+
+      // Show alert for canceled challenge with Undo option
+      _showAlert(
+        "Challenge Canceled",
+        Icons.cancel,
+        () async {
+          try {
+            // Undo: Re-accept the challenge
+            Challenge reAcceptedChallenge = await _challengeService.acceptChallenge(challenge.id);
+
+            setState(() {
+              dailyChallenges.removeWhere((c) => c.id == reAcceptedChallenge.id);
+              ongoingChallenges.insert(index, reAcceptedChallenge);
+            });
+
+            // Restart timer if it's a time-based challenge
+            if (reAcceptedChallenge.type == "time" || reAcceptedChallenge.type == "action") {
+              startChallengeTimer(reAcceptedChallenge);
+            }
+          } catch (e) {
+            _showAlert("Undo failed: $e", Icons.error, () {});
+          }
+        },
+      );
+    } catch (e) {
+      _showAlert("Failed to cancel challenge: $e", Icons.error, () {});
+    }
+  }
+
+  /// Completes a challenge and handles rewards and achievements.
+  Future<void> completeChallengeByChallenge(Challenge challenge) async {
+    try {
+      await _challengeService.completeChallenge(challenge.id);
+
+      setState(() {
+        ongoingChallenges.removeWhere((c) => c.id == challenge.id);
+      });
+
+      // Show alert for completed challenge with Undo option
+      _showAlert(
+        "Challenge Completed!",
+        Icons.check_circle,
+        () async {
+          try {
+            // Undo: Revert completion
+            Challenge revertedChallenge = await _challengeService.updateChallenge(
+              challenge.id,
+              {
+                'isCompleted': false,
+              },
+            );
+
+            setState(() {
+              ongoingChallenges.insert(0, revertedChallenge);
+            });
+
+            // Restart timer if necessary
+            if (revertedChallenge.type == "time" || revertedChallenge.type == "action") {
+              startChallengeTimer(revertedChallenge);
+            }
+          } catch (e) {
+            _showAlert("Undo failed: $e", Icons.error, () {});
+          }
+        },
+      );
+
+      // Handle achievements and rewards
+      if (challenge.achievement != null) {
+        _showAchievementAlert(challenge.achievement!, _mapIcon(challenge.icon));
+      }
+
+      if (challenge.reward.type == "item") {
+        _showItemRewardAlert(challenge.reward, _mapIcon(challenge.icon));
+      }
+    } catch (e) {
+      _showAlert("Failed to complete challenge: $e", Icons.error, () {});
+    }
+  }
+
+  // Timer management functions
+
+  /// Starts a timer for time-based challenges.
+  void startChallengeTimer(Challenge challenge) {
+    if (challenge.timer != null) {
+      challenge.timer!.cancel();
+    }
+
+    challenge.timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        // Fetch the latest challenge data
+        Challenge latestChallenge = await _challengeService.getChallengeById(challenge.id);
+
+        if (latestChallenge.isCompleted) {
+          timer.cancel();
+          return;
+        }
+
+        setState(() {
+          int duration = latestChallenge.duration ?? latestChallenge.timeLimit ?? 0;
+          int elapsed = DateTime.now()
+              .difference(latestChallenge.startTime ?? DateTime.now())
+              .inSeconds;
+
+          if (elapsed >= duration) {
+            // Time is up; complete the challenge
+            timer.cancel();
+            completeChallengeByChallenge(latestChallenge);
+          } else {
+            // Update progress
+            latestChallenge.progress = elapsed / duration;
+            // Update the challenge in the list
+            int index = ongoingChallenges.indexWhere((c) => c.id == latestChallenge.id);
+            if (index != -1) {
+              ongoingChallenges[index] = latestChallenge;
+            }
+          }
+        });
+      } catch (e) {
+        timer.cancel();
+        _showAlert("Timer error: $e", Icons.error, () {});
+      }
+    });
+  }
+
+  // Count management functions
+
+  /// Increments the count for count-based challenges.
+  Future<void> incrementCount(Challenge challenge) async {
+    try {
+      Challenge updatedChallenge = await _challengeService.updateProgress(
+        challenge.id,
+        {
+          'current': (challenge.current ?? 0) + 1,
+        },
+      );
+
+      setState(() {
+        int index = ongoingChallenges.indexWhere((c) => c.id == updatedChallenge.id);
+        if (index != -1) {
+          ongoingChallenges[index] = updatedChallenge;
+        }
+      });
+
+      if (updatedChallenge.current != null &&
+          updatedChallenge.target != null &&
+          updatedChallenge.current! >= updatedChallenge.target!) {
+        _confirmCompletion(context, updatedChallenge);
+      }
+    } catch (e) {
+      _showAlert("Failed to increment count: $e", Icons.error, () {});
+    }
+  }
+
+  /// Decrements the count for count-based challenges.
+  Future<void> decrementCount(Challenge challenge) async {
+    if ((challenge.current ?? 0) <= 0) return;
+
+    try {
+      Challenge updatedChallenge = await _challengeService.updateProgress(
+        challenge.id,
+        {
+          'current': (challenge.current ?? 0) - 1,
+        },
+      );
+
+      setState(() {
+        int index = ongoingChallenges.indexWhere((c) => c.id == updatedChallenge.id);
+        if (index != -1) {
+          ongoingChallenges[index] = updatedChallenge;
+        }
+      });
+    } catch (e) {
+      _showAlert("Failed to decrement count: $e", Icons.error, () {});
+    }
+  }
+
+  // Timer management functions
+
+  /// Starts a challenge by setting it as accepted and initiating the timer
+  void startChallenge(Challenge challenge) {
     setState(() {
-      challenge["isStarted"] = true;
-      challenge["startTime"] = DateTime.now();
-      challenge["isPaused"] = false;
+      challenge.isAccepted = true;
+      challenge.startTime = DateTime.now();
+      challenge.isPaused = false;
     });
 
-    if (challenge["type"] == "time" || challenge["type"] == "action") {
+    if (challenge.type == "time" || challenge.type == "action") {
       startChallengeTimer(challenge);
     }
   }
 
-  void pauseChallenge(Map<String, dynamic> challenge) {
+  /// Pauses an ongoing challenge and records elapsed time
+  void pauseChallenge(Challenge challenge) {
     setState(() {
-      challenge["isPaused"] = true;
-      if (challenge["timer"] != null) {
-        challenge["timer"].cancel();
-        challenge["timer"] = null;
+      challenge.isPaused = true;
+      if (challenge.timer != null) {
+        challenge.timer!.cancel();
+        challenge.timer = null;
       }
-      // calculate elapsed time and adjust startTime
-      DateTime startTime = challenge["startTime"];
+      // Calculate elapsed time and adjust startTime
+      DateTime startTime = challenge.startTime!;
       int elapsed = DateTime.now().difference(startTime).inSeconds;
-      challenge["elapsed"] = elapsed;
+      challenge.elapsed = elapsed;
     });
   }
 
-  void resumeChallenge(Map<String, dynamic> challenge) {
+  /// Resumes a paused challenge by adjusting the start time and restarting the timer
+  void resumeChallenge(Challenge challenge) {
     setState(() {
-      challenge["isPaused"] = false;
-      // adjust startTime
-      int elapsed = challenge["elapsed"] ?? 0;
-      challenge["startTime"] = DateTime.now().subtract(Duration(seconds: elapsed));
+      challenge.isPaused = false;
+      // Adjust startTime based on elapsed time
+      int elapsed = challenge.elapsed ?? 0;
+      challenge.startTime = DateTime.now().subtract(Duration(seconds: elapsed));
     });
     startChallengeTimer(challenge);
   }
 
-  void startChallengeTimer(Map<String, dynamic> challenge) {
-    if (challenge["timer"] != null) {
-      challenge["timer"].cancel();
-    }
 
-    Timer timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        if (challenge["isStarted"] == true &&
-            !(challenge["isPaused"] ?? false)) {
-          setState(() {
-            DateTime startTime = challenge["startTime"];
-            int duration = challenge["duration"] ?? challenge["timeLimit"];
-            int elapsed = DateTime.now().difference(startTime).inSeconds;
-            if (elapsed >= duration) {
-              // challenge completed
-              timer.cancel();
-              challenge["timer"] = null;
-              completeChallengeByChallenge(challenge);
-            } else {
-              // update progress
-              challenge["progress"] = elapsed / duration;
-            }
-          });
-        } else {
-          timer.cancel();
-          challenge["timer"] = null;
-        }
-      } else {
-        timer.cancel();
-        challenge["timer"] = null;
-      }
-    });
+  // Alert and confirmation Dialogs
 
-    challenge["timer"] = timer;
-  }
-
-  // count management functions
-  void incrementCount(Map<String, dynamic> challenge) {
-    setState(() {
-      if (challenge["current"]! < challenge["target"]!) {
-        challenge["current"]++;
-        if (challenge["current"] == challenge["target"]) {
-          _confirmCompletion(context, challenge);
-        }
-      }
-    });
-  }
-
-  void decrementCount(Map<String, dynamic> challenge) {
-    setState(() {
-      if (challenge["current"]! > 0) {
-        challenge["current"]--;
-      }
-    });
-  }
-
-  // alert and confirmation Dialogs
+  /// Shows a SnackBar alert with an Undo option.
   void _showAlert(String message, IconData icon, VoidCallback onUndo) {
     scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
     scaffoldMessengerKey.currentState?.showSnackBar(
@@ -385,21 +418,22 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
     );
   }
 
-  Future<void> _confirmCompletion(BuildContext context, Map<String, dynamic> challenge) async {
+  /// Prompts the user to confirm challenge completion.
+  Future<void> _confirmCompletion(BuildContext context, Challenge challenge) async {
     bool? result = await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: false, // Prevents dismissal by tapping outside
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.all(25.0), 
+            padding: const EdgeInsets.all(25.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A), 
+              color: const Color(0xFF1A1A1A),
               borderRadius: BorderRadius.circular(22.0),
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min, 
+              mainAxisSize: MainAxisSize.min, // Wrap content
               children: [
                 Container(
                   decoration: const BoxDecoration(
@@ -410,7 +444,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                   child: const Icon(
                     Icons.check,
                     color: Colors.black,
-                    size: 30.0, 
+                    size: 30.0,
                   ),
                 ),
                 const SizedBox(height: 16.0),
@@ -446,7 +480,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10.0),
                         ),
                         onPressed: () {
-                          Navigator.of(context).pop(false); 
+                          Navigator.of(context).pop(false); // Cancel
                         },
                         child: const Text(
                           "Cancel",
@@ -459,14 +493,14 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.black,
-                          backgroundColor: Colors.white, 
+                          backgroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 10.0),
                         ),
                         onPressed: () {
-                          Navigator.of(context).pop(true);
+                          Navigator.of(context).pop(true); // Complete
                         },
                         child: const Text(
                           "Complete",
@@ -483,25 +517,26 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
       },
     );
     if (result == true) {
-      completeChallengeByChallenge(challenge);
+      await completeChallengeByChallenge(challenge);
     }
   }
 
-  void _showAchievementAlert(Map<String, dynamic> achievement, IconData icon) {
+  /// Displays an achievement alert dialog.
+  void _showAchievementAlert(Achievement achievement, IconData icon) {
     showDialog(
       context: context,
-      barrierDismissible: false, 
+      barrierDismissible: false, // Prevents dismissal by tapping outside
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.all(25.0), 
+            padding: const EdgeInsets.all(25.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A), 
+              color: const Color(0xFF1A1A1A),
               borderRadius: BorderRadius.circular(22.0),
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min, // Wrap content
               children: [
                 Container(
                   decoration: const BoxDecoration(
@@ -510,9 +545,9 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                   ),
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    icon, 
-                    color: Colors.black, 
-                    size: 30.0, 
+                    icon,
+                    color: Colors.black,
+                    size: 30.0,
                   ),
                 ),
                 const SizedBox(height: 16.0),
@@ -526,7 +561,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                 ),
                 const SizedBox(height: 2.0),
                 Text(
-                  achievement["title"],
+                  achievement.title,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
                     fontSize: 16.0,
@@ -535,7 +570,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                 ),
                 const SizedBox(height: 12.0),
                 Text(
-                  achievement["description"],
+                  achievement.description,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 14.0,
@@ -546,14 +581,14 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.black,
-                    backgroundColor: Colors.white, 
+                    backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 10.0),
                   ),
                   onPressed: () {
-                    Navigator.of(context).pop(); 
+                    Navigator.of(context).pop(); // Close dialog
                   },
                   child: const Text(
                     "OK",
@@ -568,32 +603,33 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
     );
   }
 
-  void _showItemRewardAlert(Map<String, dynamic> reward, IconData icon) {
+  /// Displays an item reward alert dialog.
+  void _showItemRewardAlert(Reward reward, IconData icon) {
     showDialog(
       context: context,
-      barrierDismissible: false, 
+      barrierDismissible: false, // Prevents dismissal by tapping outside
       builder: (BuildContext context) {
         return Dialog(
-          backgroundColor: Colors.transparent, 
+          backgroundColor: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.all(25.0), 
+            padding: const EdgeInsets.all(25.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A), 
+              color: const Color(0xFF1A1A1A),
               borderRadius: BorderRadius.circular(22.0),
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min, // Wrap content
               children: [
                 Container(
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white, 
+                    color: Colors.white,
                   ),
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    icon, 
-                    color: Colors.black, 
-                    size: 30.0, 
+                    icon,
+                    color: Colors.black,
+                    size: 30.0,
                   ),
                 ),
                 const SizedBox(height: 16.0),
@@ -601,13 +637,13 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                   "New Item Unlocked!",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18.0, 
+                    fontSize: 18.0,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 3.0),
                 Text(
-                  reward["value"],
+                  reward.value.toString(),
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 16.0,
@@ -618,14 +654,14 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.black,
-                    backgroundColor: Colors.white, 
+                    backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 10.0),
                   ),
                   onPressed: () {
-                    Navigator.of(context).pop(); 
+                    Navigator.of(context).pop(); // Close dialog
                   },
                   child: const Text(
                     "OK",
@@ -640,6 +676,7 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
     );
   }
 
+  /// Formats the remaining time into a human-readable string.
   String _formatTimeLeft(int seconds) {
     if (seconds <= 0) return "Completed";
     int hours = seconds ~/ 3600;
@@ -648,6 +685,22 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
       return "$hours hr $minutes min left";
     } else {
       return "$minutes min left";
+    }
+  }
+
+  /// Maps the icon string to an IconData.
+  IconData _mapIcon(String? iconName) {
+    switch (iconName) {
+      case 'screen_lock_portrait':
+        return Icons.screen_lock_portrait;
+      case 'self_improvement':
+        return Icons.self_improvement;
+      case 'book':
+        return Icons.book;
+      case 'directions_walk':
+        return Icons.directions_walk;
+      default:
+        return Icons.help_outline;
     }
   }
 
@@ -672,121 +725,120 @@ class _DailyChallengesScreenState extends State<DailyChallengesScreen> {
           ),
           elevation: 0,
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding:
-                EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Completed Challenges Section
-                RoundedCard(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Icon(Icons.check_circle, color: Colors.white, size: 30),
-                      const Text(
-                        "Completed Challenges",
-                        style: TextStyle(color: Colors.white, fontSize: 18),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                        onPressed: () {
-                          // Navigate to Completed Challenges Screen
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const CompletedChallengesScreen()),
-                          );
-                        },
-                        tooltip: 'View Completed Challenges',
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 30.0),
-
-                // Daily Challenges Section
-                Text(
-                  "Daily",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10.0),
-                dailyChallenges.isEmpty
-                    ? EmptyChallengeCard(
-                        width: cardWidth, message: "No more challenges for today")
-                    : ChallengeList(
-                        challenges: dailyChallenges,
-                        cardWidth: cardWidth,
-                        onAccept: acceptChallenge,
-                      ),
-
-                const SizedBox(height: 30.0),
-
-                // Ongoing Challenges Section
-                Text(
-                  "Ongoing",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10.0),
-                ongoingChallenges.isEmpty
-                    ? EmptyChallengeCard(
-                        width: cardWidth, message: "No ongoing challenges")
-                    : ListView.builder(
-                        itemCount: ongoingChallenges.length,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemBuilder: (context, index) {
-                          var challenge = ongoingChallenges[index];
-                          return Container(
-                            margin:
-                                const EdgeInsets.only(bottom: 16.0),
-                            child: Slidable(
-                              key: ValueKey(challenge["title"]),
-                              startActionPane: ActionPane(
-                                motion: const ScrollMotion(),
-                                extentRatio: 0.35, 
-                                children: [
-                                  SlidableAction(
-                                    onPressed: (context) {
-                                      cancelChallenge(index);
-                                    },
-                                    backgroundColor: Colors.black,
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.cancel,
-                                    label: 'Cancel',
-                                    borderRadius: BorderRadius.circular(16),
-                                    padding:
-                                        EdgeInsets.zero,
-                                  ),
-                                ],
-                              ),
-                              child: OngoingChallengeCard(
-                                challenge: challenge,
-                                onComplete: () => _confirmCompletion(context, challenge),
-                                onIncrement: () => incrementCount(challenge),
-                                onDecrement: () => decrementCount(challenge),
-                                onStart: () => startChallenge(challenge),
-                                onPause: () => pauseChallenge(challenge),
-                                onResume: () => resumeChallenge(challenge),
-                                formatTimeLeft: _formatTimeLeft,
-                              ),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : errorMessage != null
+                ? Center(
+                    child: Text(
+                      "Error: $errorMessage",
+                      style: const TextStyle(color: Colors.white),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding, vertical: 20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Completed Challenges Section
+                          RoundedCard(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Icon(Icons.check_circle,
+                                    color: Colors.white, size: 30),
+                                const Text(
+                                  "Completed Challenges",
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_forward,
+                                      color: Colors.white),
+                                  onPressed: () {
+                                    // Navigate to Completed Challenges Screen
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const CompletedChallengesScreen()),
+                                    );
+                                  },
+                                  tooltip: 'View Completed Challenges',
+                                ),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(height: 30.0),
+
+                          // Daily Challenges Section
+                          Text(
+                            "Daily",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10.0),
+                          dailyChallenges.isEmpty
+                              ? EmptyChallengeCard(
+                                  width: cardWidth,
+                                  message: "No more challenges for today")
+                              : ChallengeList(
+                                  challenges: dailyChallenges,
+                                  cardWidth: cardWidth,
+                                  onAccept: acceptChallenge,
+                                ),
+
+                          const SizedBox(height: 30.0),
+
+                          // Ongoing Challenges Section
+                          Text(
+                            "Ongoing",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10.0),
+                          ongoingChallenges.isEmpty
+                              ? EmptyChallengeCard(
+                                  width: cardWidth,
+                                  message: "No ongoing challenges")
+                              : ListView.builder(
+                                  itemCount: ongoingChallenges.length,
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemBuilder: (context, index) {
+                                    final Challenge challenge =
+                                        ongoingChallenges[index];
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 16.0),
+                                      child: OngoingChallengeCard(
+                                        challenge: challenge,
+                                        onComplete: () =>
+                                            _confirmCompletion(context, challenge),
+                                        onIncrement: () =>
+                                            incrementCount(challenge),
+                                        onDecrement: () =>
+                                            decrementCount(challenge),
+                                        onStart: () => startChallenge(challenge),
+                                        onPause: () => pauseChallenge(challenge),
+                                        onResume: () => resumeChallenge(challenge),
+                                        formatTimeLeft: _formatTimeLeft,
+                                        getIcon: _mapIcon,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ],
                       ),
-              ],
-            ),
-          ),
-        ),
+                    ),
+                  ),
       ),
     );
   }
