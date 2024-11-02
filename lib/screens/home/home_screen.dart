@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _totalScore = score;
       });
     }).catchError((error) {
-      print('Error fetching total score: $error');
+      debugPrint('Error fetching total score: $error');
       // Optionally display an error message in the UI
     });
   }

@@ -15,6 +15,16 @@ const createChallenge = async (req, res) => {
             duration,
         });
 
+        if (type === 'item') {
+            if (!reward || !reward.item) {
+                return res.status(400).json({ message: 'Item reward must include item ID.' });
+            }
+        } else if (type === 'points') {
+            if (!reward || typeof reward.points !== 'number') {
+                return res.status(400).json({ message: 'Points reward must include points value.' });
+            }
+        }
+
         const savedChallenge = await newChallenge.save();
         res.status(201).json(savedChallenge);
     } catch (error) {
@@ -25,7 +35,13 @@ const createChallenge = async (req, res) => {
 // GET /challenges - Get all challenges
 const getAllChallenges = async (req, res) => {
     try {
-        const challenges = await Challenge.find();
+        const challenges = await Challenge.find()
+            .populate({
+                path: 'reward.item',
+                model: 'Item',
+            })
+            .populate('achievement');
+
         res.status(200).json(challenges);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving challenges', error });
@@ -35,7 +51,13 @@ const getAllChallenges = async (req, res) => {
 // GET /challenges/active - Get active challenges
 const getActiveChallenges = async (req, res) => {
     try {
-        const challenges = await Challenge.find({ isAccepted: true, isCompleted: false });
+        const challenges = await Challenge.find({ isAccepted: true, isCompleted: false })
+            .populate({
+                path: 'reward.item',
+                model: 'Item',
+            })
+            .populate('achievement');
+
         res.status(200).json(challenges);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving active challenges', error });
@@ -45,7 +67,13 @@ const getActiveChallenges = async (req, res) => {
 // GET /challenges/completed - Get completed challenges
 const getCompletedChallenges = async (req, res) => {
     try {
-        const challenges = await Challenge.find({ isCompleted: true });
+        const challenges = await Challenge.find({ isCompleted: true })
+            .populate({
+                path: 'reward.item',
+                model: 'Item',
+            })
+            .populate('achievement');
+        
         res.status(200).json(challenges);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving completed challenges', error });
@@ -58,7 +86,13 @@ const updateChallenge = async (req, res) => {
     const updateData = req.body;
 
     try {
-        const updatedChallenge = await Challenge.findByIdAndUpdate(id, updateData, { new: true });
+        const updatedChallenge = await Challenge.findByIdAndUpdate(id, updateData, { new: true })
+            .populate({
+                path: 'reward.item',
+                model: 'Item',
+            })
+            .populate('achievement');
+
         if (updatedChallenge) {
             res.status(200).json(updatedChallenge);
         } else {
@@ -90,9 +124,14 @@ const getChallengeById = async (req, res) => {
     const { id } = req.params;
 
     try {
-        const getChallengeById = await Challenge.findById(id);
-        if (getChallengeById) {
-            res.status(200).json({ message: 'Challenge retrieved successfully' });
+        const challenge = await Challenge.findById(id)
+            .populate({
+                path: 'reward.item',
+                model: 'Item',
+            })
+            .populate('achievement');
+        if (challenge) {
+            res.status(200).json(challenge);
         } else {
             res.status(404).json({ message: 'Challenge not found' });
         }

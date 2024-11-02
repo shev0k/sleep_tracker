@@ -8,7 +8,10 @@ import 'package:sleeping_tracker_ui/components/widgets/(daily_challenges)/challe
 import 'package:sleeping_tracker_ui/components/widgets/(daily_challenges)/ongoing_challenge_card.dart';
 import 'completed_challenges_screen.dart';
 import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
-import 'package:sleeping_tracker_ui/services/challenge_service.dart'; // Import ChallengeService
+import 'package:sleeping_tracker_ui/services/challenge_service.dart';
+import 'package:sleeping_tracker_ui/models/achievement.dart';
+import 'package:sleeping_tracker_ui/services/progress_service.dart';
+import 'package:sleeping_tracker_ui/models/reward.dart';
 
 class DailyChallengesScreen extends StatefulWidget {
   const DailyChallengesScreen({super.key});
@@ -28,6 +31,7 @@ class DailyChallengesScreenState extends State<DailyChallengesScreen> {
   String? errorMessage;
 
   final ChallengeService _challengeService = ChallengeService();
+  final ProgressService _progressService = ProgressService();
 
   @override
   void initState() {
@@ -200,6 +204,8 @@ class DailyChallengesScreenState extends State<DailyChallengesScreen> {
     try {
       await _challengeService.completeChallenge(challenge.id);
 
+      await _progressService.populateProgress();
+
       setState(() {
         ongoingChallenges.removeWhere((c) => c.id == challenge.id);
       });
@@ -317,6 +323,7 @@ class DailyChallengesScreenState extends State<DailyChallengesScreen> {
       if (updatedChallenge.current != null &&
           updatedChallenge.target != null &&
           updatedChallenge.current! >= updatedChallenge.target!) {
+        if (!mounted) return;
         _confirmCompletion(context, updatedChallenge);
       }
     } catch (e) {

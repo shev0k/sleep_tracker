@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
+import 'package:sleeping_tracker_ui/models/reward.dart';
 
 class OngoingChallengeCard extends StatelessWidget {
   final Challenge challenge;
@@ -16,7 +17,7 @@ class OngoingChallengeCard extends StatelessWidget {
   final IconData Function(String?) getIcon;
 
   const OngoingChallengeCard({
-    Key? key,
+    super.key,
     required this.challenge,
     required this.onComplete,
     required this.onIncrement,
@@ -26,7 +27,7 @@ class OngoingChallengeCard extends StatelessWidget {
     required this.onResume,
     required this.formatTimeLeft,
     required this.getIcon,
-  }) : super(key: key);
+  });
 
   /// Generates the reward text based on the Reward object.
   String _getRewardText(Reward reward) {
@@ -54,7 +55,7 @@ class OngoingChallengeCard extends StatelessWidget {
     }
 
     // Generating reward text
-    String rewardText = reward != null ? _getRewardText(reward) : "";
+    String rewardText = _getRewardText(reward);
 
     // Calculate progress fraction
     double progressFraction = 0.0;
