@@ -1,18 +1,39 @@
-// lib/components/widgets/challenge_card.dart
+// lib/components/widgets/challenge_list.dart
 
 import 'package:flutter/material.dart';
+import 'package:sleeping_tracker_ui/models/(challenge)/challenge.dart';
 
 class ChallengeList extends StatelessWidget {
-  final List<Map<String, dynamic>> challenges;
+  final List<Challenge> challenges;
   final double cardWidth;
-  final Function(int) onAccept;
+  final Function(Challenge) onAccept;
 
   const ChallengeList({
-    super.key,
+    Key? key,
     required this.challenges,
     required this.cardWidth,
     required this.onAccept,
-  });
+  }) : super(key: key);
+
+  /// Maps the icon string from the backend to IconData.
+  IconData _mapIcon(String? iconName) {
+    switch (iconName) {
+      case 'screen_lock_portrait':
+        return Icons.screen_lock_portrait;
+      case 'self_improvement':
+        return Icons.self_improvement;
+      case 'book':
+        return Icons.book;
+      case 'directions_walk':
+        return Icons.directions_walk;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  String _getRewardText(Reward reward) {
+    return reward.type == 'points' ? "${reward.value} points" : "${reward.value}";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +43,8 @@ class ChallengeList extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: challenges.length,
         itemBuilder: (context, index) {
-          var reward = challenges[index]["reward"];
-          String rewardText = reward["type"] == "points"
-              ? "${reward["value"]} points"
-              : "${reward["value"]}";
+          Challenge challenge = challenges[index];
+          String rewardText = _getRewardText(challenge.reward);
 
           return Container(
             width: cardWidth,
@@ -47,14 +66,14 @@ class ChallengeList extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(
-                    challenges[index]["icon"],
+                    _mapIcon(challenge.icon),
                     color: Colors.white,
                     size: 28.0,
-                    semanticLabel: '${challenges[index]["title"]} Icon',
+                    semanticLabel: '${challenge.title} Icon',
                   ),
                   const SizedBox(height: 14.0),
                   Text(
-                    challenges[index]["title"],
+                    challenge.title,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -68,12 +87,11 @@ class ChallengeList extends StatelessWidget {
                   Text(
                     "Reward: $rewardText",
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
                   ),
                   const SizedBox(height: 14),
                   ElevatedButton(
-                    onPressed: () => onAccept(index),
+                    onPressed: () => onAccept(challenge),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
